@@ -6,4 +6,8 @@ defmodule Ecobee.Storage do
   def get(key) do
     CubDB.get(Ecobee.CubDB, key)
   end
+
+  def clear do
+    CubDB.clear(Ecobee.CubDB)
+  end
 end

@@ -10,13 +10,11 @@ defmodule Ecobee.PromExPlugin do
   ecobee_thermostat_desired_cool_fahrenheit
   ecobee_thermostat_desired_heat_fahrenheit
   ecobee_thermostat_desired_humidity_ratio
-
   """
   use PromEx.Plugin
+  require Logger
 
   @metric_prefix [:ecobee]
-
-  @thermostat_event [:prom_ex, :plugin, :ecobee, :thermostat]
 
   @temperature_event [:prom_ex, :plugin, :ecobee, :sensor, :temperature]
   @humidity_event [:prom_ex, :plugin, :ecobee, :sensor, :humidity]
@@ -29,11 +27,11 @@ defmodule Ecobee.PromExPlugin do
     poll_rate = Keyword.get(opts, :poll_rate, 5_000)
 
     [
-      ecobee_metrics(poll_rate)
+      thermostat_metrics(poll_rate)
     ]
   end
 
-  def ecobee_metrics(poll_rate) do
+  def thermostat_metrics(poll_rate) do
     Polling.build(
       :ecobee_sensor_data,
       poll_rate,
@@ -77,50 +75,57 @@ defmodule Ecobee.PromExPlugin do
 
   @doc false
   def execute_thermostat_query do
-    token = Ecobee.Storage.get(:token).access_token
-    client = Ecobee.Api.Client.new(token)
+    if token = Ecobee.Storage.get(:token) do
+      client = Ecobee.Api.Client.new(token.access_token)
 
-    case Ecobee.Api.Client.thermostat(client) do
-      {:ok, response} ->
-        Enum.each(response["thermostatList"], fn thermostat ->
+      case Ecobee.Api.Client.thermostat(client) do
+        {:ok, response} ->
+          Enum.each(response["thermostatList"], fn thermostat ->
+            thermostat_name = thermostat["name"]
+            thermostat_id = thermostat["identifier"]
 
-          thermostat_name = thermostat["name"]
-          thermostat_id = thermostat["identifier"]
+            thermostat["remoteSensors"]
+            |> Enum.map(fn sensor ->
+              name = sensor["name"]
 
-          thermostat["remoteSensors"]
-          |> Enum.map(fn sensor ->
-            name = sensor["name"]
-            record_temperature_capability(
-              sensor,
-              %{name: name, thermostat_name: thermostat_name, thermostat_id: thermostat_id}
+              record_temperature_capability(
+                sensor,
+                %{name: name, thermostat_name: thermostat_name, thermostat_id: thermostat_id}
+              )
+
+              record_humidity_capability(
+                sensor,
+                %{name: name, thermostat_name: thermostat_name, thermostat_id: thermostat_id}
+              )
+            end)
+
+            record_runtime_temperature_value(
+              thermostat["runtime"],
+              @desired_temperature_event,
+              "desiredCool",
+              %{type: "cool", thermostat_name: thermostat_name, thermostat_id: thermostat_id}
             )
-            record_humidity_capability(
-              sensor,
-              %{name: name, thermostat_name: thermostat_name, thermostat_id: thermostat_id}
+
+            record_runtime_temperature_value(
+              thermostat["runtime"],
+              @desired_temperature_event,
+              "desiredHeat",
+              %{type: "heat", thermostat_name: thermostat_name, thermostat_id: thermostat_id}
+            )
+
+            record_runtime_humidity_value(
+              thermostat["runtime"],
+              @desired_humidity_event,
+              "desiredHumidity",
+              %{type: "humidity", thermostat_name: thermostat_name, thermostat_id: thermostat_id}
             )
           end)
 
-          record_runtime_temperature_value(
-            thermostat["runtime"],
-            @desired_temperature_event,
-            "desiredCool",
-            %{type: "cool", thermostat_name: thermostat_name, thermostat_id: thermostat_id}
-          )
-          record_runtime_temperature_value(
-            thermostat["runtime"],
-            @desired_temperature_event,
-            "desiredHeat",
-            %{type: "heat", thermostat_name: thermostat_name, thermostat_id: thermostat_id}
-          )
-          record_runtime_humidity_value(
-            thermostat["runtime"],
-            @desired_humidity_event,
-            "desiredHumidity",
-            %{type: "humidity", thermostat_name: thermostat_name, thermostat_id: thermostat_id}
-          )
-        end)
-      {:error, err} ->
-        IO.inspect(err)
+        {:error, err} ->
+          IO.inspect(err)
+      end
+    else
+      Logger.debug("No authentication token.  Skipping thermostat query")
     end
   end
 
@@ -137,22 +142,28 @@ defmodule Ecobee.PromExPlugin do
   end
 
   defp record_temperature_capability(sensor, tags) do
-    temperature = sensor["capability"] |> Enum.find(fn capability -> capability["type"] == "temperature" end)
+    temperature =
+      sensor["capability"] |> Enum.find(fn capability -> capability["type"] == "temperature" end)
+
     if value = temp_value(temperature["value"]) do
       :telemetry.execute(@temperature_event, %{value: value}, tags)
     end
   end
 
   defp record_humidity_capability(sensor, tags) do
-    humidity = sensor["capability"] |> Enum.find(fn capability -> capability["type"] == "humidity" end)
+    humidity =
+      sensor["capability"] |> Enum.find(fn capability -> capability["type"] == "humidity" end)
+
     if value = humidity_value(humidity["value"]) do
       :telemetry.execute(@humidity_event, %{value: value}, tags)
     end
   end
 
   defp temp_value(value) when is_binary(value) do
-    value = value
-    |> String.to_integer()
+    value =
+      value
+      |> String.to_integer()
+
     value / 10.0
   end
 
@@ -165,8 +176,10 @@ defmodule Ecobee.PromExPlugin do
   end
 
   defp humidity_value(value) when is_binary(value) do
-    value = value
-    |> String.to_integer()
+    value =
+      value
+      |> String.to_integer()
+
     value / 100.0
   end
 

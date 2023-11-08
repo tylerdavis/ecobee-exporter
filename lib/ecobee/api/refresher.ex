@@ -14,6 +14,7 @@ defmodule Ecobee.Api.Refresher do
 
   def init(state) do
     Logger.debug "Refresher: Starting with interval: #{@interval / 1000} seconds"
+    Process.send(self(), :work, [])
     schedule_work()
     {:ok, state}
   end
@@ -29,7 +30,12 @@ defmodule Ecobee.Api.Refresher do
     token_response = Storage.get(:token)
     if !is_nil(token_response) and token_response.refresh_token do
       Logger.debug("Refresher: Refreshing access token")
-      Auth.refresh_token(token_response.refresh_token)
+      case Auth.refresh_token(token_response.refresh_token) do
+        {:error, reason} ->
+          Logger.warning("Refresher: There was a problem refreshing the token: #{reason}")
+        {:ok, _} ->
+          Logger.debug("Refresher: Token updated")
+      end
     else
       Logger.warning("Refresher: No refresh token found")
     end

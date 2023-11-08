@@ -16,9 +16,9 @@ defmodule Ecobee.Application do
       # {Ecobee.Worker, arg},
       # Start to serve requests, typically the last entry
       EcobeeWeb.Endpoint,
+      {CubDB, data_dir: "priv/data", name: Ecobee.CubDB},
       Ecobee.PromEx,
       Ecobee.Api.Refresher,
-      {CubDB, data_dir: "priv/data", name: Ecobee.CubDB},
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

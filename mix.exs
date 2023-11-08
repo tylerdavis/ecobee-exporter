@@ -62,6 +62,7 @@ defmodule Ecobee.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
+      "assets.deploy": ["esbuild default --minify", "phx.digest"]
     ]
   end
 end

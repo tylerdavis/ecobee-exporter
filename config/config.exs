@@ -41,6 +41,8 @@ config :phoenix, :json_library, Jason
 
 config :tesla, adapter: Tesla.Adapter.Hackney
 
+config :ecobee, :application_api_key, System.get_env("ECOBEE_APPLICATION_API_KEY", "2L670tccVbOHBRZrYmQNdcJss6z5xK5S")
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

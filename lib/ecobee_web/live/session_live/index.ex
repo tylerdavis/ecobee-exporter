@@ -59,6 +59,14 @@ defmodule EcobeeWeb.SessionLive.Index do
     }
   end
 
+  def handle_event("reset-session", _, socket) do
+    {
+      :noreply,
+      socket
+      |> assign(:state, :ready)
+    }
+  end
+
   @impl true
   def handle_info(:request_pin, socket) do
     case Ecobee.Api.Auth.request_pin() do
@@ -105,7 +113,8 @@ defmodule EcobeeWeb.SessionLive.Index do
     <div class="container">
       <div class="row">
         <div class="col">
-          <h1>Authentication</h1>
+          <h1>Ecobee Prometheus Exporter</h1>
+          <p>Authenticate with Ecobee to start exporting metrics.</p>
 
           <div :if={@state == :ready}>
             <button phx-click="request-pin">Request Ecobee PIN</button>
@@ -128,7 +137,7 @@ defmodule EcobeeWeb.SessionLive.Index do
           </div>
 
           <div :if={@state == :authenticated}>
-            <p>You're all set!  You can check your metrics at <code>/metrics</code></p>
+            <p>You're all set!  You can check your metrics at <code><a href="/metrics">/metrics</a></code></p>
           </div>
 
           <div style="margin-top:4rem;display:none">

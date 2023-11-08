@@ -8,6 +8,6 @@ defmodule Ecobee.Api do
   end
 
   def client_id do
-    "2L670tccVbOHBRZrYmQNdcJss6z5xK5S"
+    Application.get_env(:ecobee, :application_api_key)
   end
 end

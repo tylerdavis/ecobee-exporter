@@ -17,7 +17,7 @@ defmodule EcobeeWeb.Router do
   scope "/", EcobeeWeb do
     pipe_through :browser
 
-    live "/sessions", SessionLive.Index, :index
+    live "/", SessionLive.Index, :index
   end
 
   # Other scopes may use custom stacks.
