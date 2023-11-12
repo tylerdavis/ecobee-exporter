@@ -5,11 +5,10 @@ defmodule Ecobee.PromExPlugin do
   Available metrics
   -----------------
 
-  ecobee_sensor_temperature_fahrenheit
   ecobee_sensor_humidity_ratio
-  ecobee_thermostat_desired_cool_fahrenheit
-  ecobee_thermostat_desired_heat_fahrenheit
+  ecobee_sensor_temperature_fahrenheit
   ecobee_thermostat_desired_humidity_ratio
+  ecobee_thermostat_desired_temperature_fahrenheit
   """
   use PromEx.Plugin
   require Logger
